@@ -4,7 +4,7 @@ import { ChatBody, CoreRequest, type CoreResponse } from '@vani/shared'
 import { dbFor } from './db/client'
 import { env } from './env'
 import { runTool } from './tools'
-import { syncFamily } from './tools/family'
+import { syncFamily, syncIfChanged } from './tools/family'
 
 async function handle(req: CoreRequest): Promise<CoreResponse> {
   const familyId = req.kind === 'tool' ? req.caller.familyId : req.family.id
@@ -16,7 +16,8 @@ async function handle(req: CoreRequest): Promise<CoreResponse> {
     case 'sync_family':
       return syncFamily(db, req.family)
     case 'tool':
-      return runTool(db, req.tool, req.input, req.caller)
+      await syncIfChanged(db, req.family)
+      return runTool(db, req.tool, req.input, req.caller, req.idempotencyKey)
   }
 }
 

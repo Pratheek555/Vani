@@ -45,7 +45,7 @@ Isolation: never trust ids in tool input. Each conversation is pinned to one fam
 - `pnpm dev:core` and `pnpm dev:gateway` (ports 8788 / 8787). The signup page is at http://localhost:8787
 - `pnpm typecheck`
 - `pnpm db:generate` after any change to a `db/schema.ts` (migrations run automatically at boot)
-- `pnpm sim identity <tgUserId> "/start <token>" [--group <id>]` and `pnpm sim tool <memberId> <tool> [json] [--conv <id>]`. In Git Bash, a leading `/start` gets mangled into a path, so run `MSYS_NO_PATHCONV=1 node node_modules/tsx/dist/cli.mjs scripts/keiki-sim.ts ...` instead.
+- `pnpm sim identity <tgUserId> "/start <token>" [--group <id>]` and `pnpm sim tool <memberId> <tool> [json] [--conv <groupId>] [--msg <messageId>]` (default is a DM turn; reuse `--msg` to test replay). In Git Bash, a leading `/start` gets mangled into a path, so run `MSYS_NO_PATHCONV=1 node node_modules/tsx/dist/cli.mjs scripts/keiki-sim.ts ...` instead.
 - `pnpm keiki:print` / `pnpm keiki:sync` push the agent config to Keiki
 - Docker: `docker build -f apps/<gateway|core>/Dockerfile .` from the repo root
 
@@ -85,3 +85,9 @@ Legend: ✅ tested by us · 📄 the docs say so, not yet tested · ❓ unclear
 - ✅ Tool payload: `context.principal.userId` is what our identity webhook returned, and `context.phone` equals the identity webhook's `conversation.id`. Also `context.channel{channel, conversationId, inboundText, messageId}`. There is no top-level `context.userId`.
 - ✅ If the identity webhook returns `userId: null` **without** a `reply`, Keiki still runs the model (with no principal). Only `reply` ends the turn. So strangers in a group still get model replies, just with no tool access.
 - ✅ The model `google/gemini-3.8-flash` is accepted.
+- ❓ The SDK's `ChannelEnvelope` type lists `channelId` (the room, e.g. a Telegram group), `isDirect` and `messageId`. We now pin groups by `channelId` and set `Caller.conversationKind` from `isDirect` (or from `channelId === userId` on Telegram). If neither field shows up, the kind is `unknown` and is treated like a group. **Check this with `LOG_KEIKI_PAYLOADS=1` in a real Telegram group and DM.**
+
+### How tool calls stay safe (Oct 20, 2026)
+- **DM-only tools:** set `dmOnly: true` in `packages/shared/src/tools.ts` on any tool that returns health or money details. The core refuses it unless `caller.conversationKind === 'dm'`.
+- **Idempotency:** the gateway hashes conversation + Keiki `messageId` + tool + input into `idempotencyKey`. The core stores the answer in `tool_calls` for 7 days and replays it on redelivery. Calls that throw aren't stored. With no `messageId`, there's no dedupe.
+- **Profile drift:** every tool request carries the gateway's `FamilyProfile`. The core resyncs (and deletes removed members) whenever its copy differs.

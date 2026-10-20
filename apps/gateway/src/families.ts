@@ -62,6 +62,13 @@ export async function ensureCore(familyId: string): Promise<string> {
   return agentId
 }
 
-export async function callCore(familyId: string, req: CoreRequest): Promise<CoreResponse> {
-  return runtime.send(await ensureCore(familyId), req)
+type ToolRequest = Extract<CoreRequest, { kind: 'tool' }>
+
+/**
+ * Runs a tool on the family's core. The current profile rides along on every call, so a
+ * core that missed an update (or lost its /data) catches up on its own.
+ */
+export async function callTool(familyId: string, req: Omit<ToolRequest, 'kind' | 'family'>): Promise<CoreResponse> {
+  const agentId = await ensureCore(familyId)
+  return runtime.send(agentId, { kind: 'tool', ...req, family: await loadProfile(familyId) })
 }

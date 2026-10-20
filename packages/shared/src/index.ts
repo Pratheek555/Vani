@@ -32,6 +32,13 @@ export const FamilyProfile = z.object({
 export type FamilyProfile = z.infer<typeof FamilyProfile>
 
 /**
+ * Where the turn happened. `unknown` when Keiki's signed context doesn't say; treat it
+ * like a group, so private details never leak.
+ */
+export const ConversationKind = z.enum(['dm', 'group', 'unknown'])
+export type ConversationKind = z.infer<typeof ConversationKind>
+
+/**
  * Who is calling. The gateway resolves this from Keiki's signed context, never from
  * model-provided tool input.
  */
@@ -40,6 +47,7 @@ export const Caller = z.object({
   memberId: z.string(),
   role: Role,
   conversationId: z.string().nullable(),
+  conversationKind: ConversationKind,
 })
 export type Caller = z.infer<typeof Caller>
 
@@ -49,9 +57,13 @@ export const CoreRequest = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('tool'),
     requestId: z.string(),
+    /** Same for a retried delivery of the same tool call; null when Keiki gave no message id. */
+    idempotencyKey: z.string().nullable(),
     tool: z.string(),
     input: z.unknown(),
     caller: Caller,
+    /** The gateway's current profile; the core resyncs when its copy differs. */
+    family: FamilyProfile,
   }),
 ])
 export type CoreRequest = z.infer<typeof CoreRequest>

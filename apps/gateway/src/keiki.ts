@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
 import { verifyWebhook, type IdentityWebhookAnswer } from '@onkeiki/agents/cloud'
-import { isToolName, type CoreResponse } from '@vani/shared'
+import { isToolName, type ConversationKind, type CoreResponse } from '@vani/shared'
 import { env } from './env'
-import { callCore } from './families'
+import { callTool, hashToken } from './families'
 import type { Member } from './db/schema'
 import { claimConversation, findMember, getMember, redeemToken, startToken } from './identity'
 
@@ -23,13 +23,22 @@ const IdentityRequest = z.looseObject({
 // `context.principal`, and `context.phone` carries the identity webhook's `conversation.id`.
 // Telegram turns skip the identity webhook, so there is no principal; `context.channel`
 // still carries the verified sender and the inbound text, all covered by the signature.
+// `channelId` / `isDirect` / `messageId` come from the SDK's ChannelEnvelope type and are
+// not yet seen on real traffic.
 const ToolCall = z.looseObject({
   input: z.unknown(),
   context: z.looseObject({
     phone: z.string().nullish(),
     principal: z.looseObject({ userId: z.string().nullish() }).nullish(),
     channel: z
-      .looseObject({ channel: z.string(), userId: z.string().nullish(), inboundText: z.string().nullish() })
+      .looseObject({
+        channel: z.string(),
+        userId: z.string().nullish(),
+        inboundText: z.string().nullish(),
+        messageId: z.string().nullish(),
+        channelId: z.string().nullish(),
+        isDirect: z.boolean().nullish(),
+      })
       .nullish(),
   }),
 })
@@ -37,6 +46,21 @@ type ToolContext = z.infer<typeof ToolCall>['context']
 
 const chatIdentityOf = (ctx: ToolContext) =>
   ctx.channel?.userId ? `${ctx.channel.channel}:${ctx.channel.userId}` : null
+
+/**
+ * The room this turn happened in and whether it's private. On Telegram `phone` is per
+ * sender (`tg:<userId>`), so a group must be keyed by its `channelId` instead.
+ */
+function conversationOf(ctx: ToolContext): { id: string | null; kind: ConversationKind } {
+  const ch = ctx.channel
+  const id = ch?.channelId ? `${ch.channel}:${ch.channelId}` : (ctx.phone ?? null)
+  let kind: ConversationKind = 'unknown'
+  if (ch?.isDirect != null) kind = ch.isDirect ? 'dm' : 'group'
+  // Telegram: a private chat's id is the user's id; groups have their own (negative) id.
+  else if (ch?.channelId && ch.userId) kind = ch.channelId === ch.userId ? 'dm' : 'group'
+  if (kind === 'unknown' && env.LOG_KEIKI_PAYLOADS) console.warn('[keiki] cannot tell DM from group', ch)
+  return { id, kind }
+}
 
 /** Who is calling: the identity webhook's principal, else the signed channel sender. */
 async function callerOf(ctx: ToolContext): Promise<Member | undefined> {
@@ -111,18 +135,28 @@ keiki.post('/tools/:tool', async (c) => {
 
   const member = await callerOf(context)
   if (!member) return deny("I don't know who is asking. They need to open their personal Vani link first.")
-  const conversationId = context.phone ?? null
-  if (conversationId && !(await claimConversation(conversationId, member.familyId))) {
+  const conversation = conversationOf(context)
+  if (conversation.id && !(await claimConversation(conversation.id, member.familyId))) {
     return deny('This conversation belongs to a different family.')
   }
 
+  const messageId = context.channel?.messageId
   return c.json(
-    await callCore(member.familyId, {
-      kind: 'tool',
+    await callTool(member.familyId, {
       requestId: randomUUID(),
+      // A redelivered call has the same message, tool and input; the core replays its answer.
+      idempotencyKey: messageId
+        ? hashToken(`${conversation.id}|${messageId}|${tool}|${JSON.stringify(input ?? {})}`)
+        : null,
       tool,
       input: input ?? {},
-      caller: { familyId: member.familyId, memberId: member.id, role: member.role, conversationId },
+      caller: {
+        familyId: member.familyId,
+        memberId: member.id,
+        role: member.role,
+        conversationId: conversation.id,
+        conversationKind: conversation.kind,
+      },
     }),
   )
 })
@@ -140,6 +174,7 @@ async function linkAccount(ctx: ToolContext): Promise<CoreResponse> {
   const member = await redeemToken(token, chatIdentity)
   if (!member) return { ok: false, summary: 'That link has expired or was already used. Ask whoever set up Vani for a fresh one.' }
 
-  if (ctx.phone) await claimConversation(ctx.phone, member.familyId)
+  const conversationId = conversationOf(ctx).id
+  if (conversationId) await claimConversation(conversationId, member.familyId)
   return { ok: true, summary: `Linked. This is ${member.name} (${member.role}).`, data: { name: member.name, role: member.role } }
 }

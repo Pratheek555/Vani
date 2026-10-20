@@ -1,6 +1,7 @@
 // Plays Keiki against a local gateway with correctly signed webhooks.
 //   pnpm sim identity <telegramUserId> [message text] [--group <conversationId>]
-//   pnpm sim tool <memberId> <toolName> [jsonInput] [--conv <conversationId>]
+//   pnpm sim tool <memberId> <toolName> [jsonInput] [--conv <groupId>] [--msg <messageId>]
+//     --conv makes it a group turn (default: a DM). Reuse --msg to test redelivery replay.
 import { createHmac } from 'node:crypto'
 
 try {
@@ -18,6 +19,7 @@ const flag = (name: string) => {
 }
 const group = flag('--group')
 const conv = flag('--conv')
+const msg = flag('--msg')
 const [kind, ...rest] = args
 
 async function post(path: string, payload: unknown) {
@@ -49,10 +51,15 @@ if (kind === 'identity') {
       phone: conv ?? null,
       agentId: 'agt_sim',
       principal: { userId, role: null, scopes: ['family'] },
-      channel: { channel: 'telegram', conversationId: conv ?? null },
+      channel: {
+        channel: 'telegram',
+        inboundText: '',
+        messageId: msg ?? `sim_${Date.now()}`,
+        ...(conv ? { channelId: conv, isDirect: false } : { isDirect: true }),
+      },
     },
   })
 } else {
-  console.log('usage: pnpm sim identity <telegramUserId> [text] [--group id] | pnpm sim tool <memberId> <tool> [json] [--conv id]')
+  console.log('usage: pnpm sim identity <telegramUserId> [text] [--group id] | pnpm sim tool <memberId> <tool> [json] [--conv groupId] [--msg id]')
   process.exit(1)
 }

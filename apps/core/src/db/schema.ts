@@ -16,3 +16,12 @@ export const members = sqliteTable('members', {
   timezone: text('timezone').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 })
+
+/** Answers to tool calls that carried an idempotency key, replayed on redelivery. Pruned after a week. */
+export const toolCalls = sqliteTable('tool_calls', {
+  key: text('key').primaryKey(),
+  tool: text('tool').notNull(),
+  /** JSON-encoded CoreResponse */
+  response: text('response').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+})
