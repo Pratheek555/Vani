@@ -1,0 +1,16 @@
+{
+  "name": "@vani/gateway",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@libsql/client": "^0.18.0",
+    "@onkeiki/agents": "^0.1.4",
+    "@vani/shared": "workspace:*",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "maritime-sdk": "^0.9.0",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  }
+}
