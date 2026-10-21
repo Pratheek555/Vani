@@ -38,7 +38,8 @@ if [[ -f "$pid_file" ]]; then
 fi
 
 if is_t3_server "$existing_pid"; then
-  curl --fail --silent --output /dev/null http://127.0.0.1:3773/
+  curl --retry 10 --retry-delay 1 --retry-connrefused --fail --silent --output /dev/null http://127.0.0.1:3773/
+  is_t3_server "$existing_pid" || exit 1
   echo "T3 is already running on 127.0.0.1:3773."
   exit 0
 fi
@@ -63,17 +64,10 @@ for _ in {1..20}; do
     exit 1
   fi
 
-  if { exec 3<>/dev/tcp/127.0.0.1/3773; } 2>/dev/null; then
-    printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3
-    if IFS= read -r -t 1 response <&3 && [[ "$response" == HTTP/* ]]; then
-      exec 3>&-
-      exec 3<&-
-      is_t3_server "$server_pid" || exit 1
-      echo "T3 is running on 127.0.0.1:3773."
-      exit 0
-    fi
-    exec 3>&-
-    exec 3<&-
+  if curl --fail --silent --output /dev/null http://127.0.0.1:3773/; then
+    is_t3_server "$server_pid" || exit 1
+    echo "T3 is running on 127.0.0.1:3773."
+    exit 0
   fi
 
   sleep 1
