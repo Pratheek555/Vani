@@ -101,12 +101,19 @@ The setup creates persistent credential directories, but it does not sign in to 
 
 ```bash
 export T3CODE_HOME=/data/t3 CODEX_HOME=/data/providers/codex CLAUDE_CONFIG_DIR=/data/providers/claude PATH=/data/bin:$PATH
-codex login --device-auth
-claude auth login
-t3 connect --headless
+claude auth login --claudeai
+t3 connect link --headless
 ```
 
-Run `t3 connect --headless` only for the one-time interactive T3 Connect setup or when you need to reconnect the environment. Do not copy a local credential directory into the container or commit its files.
+This setup uses Claude only. Codex remains installed and unauthenticated. Run `t3 connect link --headless` only for the one-time interactive T3 Connect setup or when you need to reconnect the environment. Do not copy a local credential directory into the container or commit its files.
+
+From Windows PowerShell, run the cloud login through SSH:
+
+```powershell
+gh codespace ssh -c vani-cloud-development-jv94gppvj9xhpq64 -- 'env CLAUDE_CONFIG_DIR=/data/providers/claude claude auth login --claudeai'
+```
+
+Open the authorization link and paste the returned code into that terminal only.
 
 CLI access depends on your Anthropic and OpenAI account, organization policy, subscription, and usage limits. Installing a CLI does not grant a subscription or increase those limits.
 
@@ -122,7 +129,7 @@ Each Codespace start runs `.devcontainer/t3-start.sh`. The script starts `/data/
 - `/data/t3/server.pid` records the process ID.
 - `/data/t3/server.log` receives server output.
 
-The start script skips startup only when the PID exists and the process command matches this T3 server. It ignores a stale PID and never kills a process that reused the PID. The script waits for an HTTP response on the local port. If the installed T3 version does not answer the probe path, the script accepts a server process that remains alive through the wait.
+The start script skips startup only when the PID and command match this T3 server and its HTTP check passes. It ignores a stale PID and never kills a process that reused the PID. It refuses to start if an untracked server occupies port 3773. Startup fails if no HTTP response arrives during the readiness wait.
 
 If `/data/bin/t3` is missing on start, rebuild the devcontainer or run `bash .devcontainer/t3-setup.sh`. The start hook does not download an unpinned replacement.
 

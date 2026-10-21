@@ -36,4 +36,4 @@ if [[ ! "$installed_version" =~ (^|[^0-9])0\.1\.1([^0-9]|$) ]]; then
   exit 1
 fi
 
-echo "T3 0.1.1 is installed in /data/bin. Run '/data/bin/t3 connect --headless' once to connect this Codespace."
+echo "T3 0.1.1 is installed in /data/bin. Run '/data/bin/t3 connect link --headless' once to connect this Codespace."

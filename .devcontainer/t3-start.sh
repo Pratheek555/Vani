@@ -38,8 +38,14 @@ if [[ -f "$pid_file" ]]; then
 fi
 
 if is_t3_server "$existing_pid"; then
+  curl --fail --silent --output /dev/null http://127.0.0.1:3773/
   echo "T3 is already running on 127.0.0.1:3773."
   exit 0
+fi
+
+if (exec 3<>/dev/tcp/127.0.0.1/3773) 2>/dev/null; then
+  echo "Port 3773 is occupied by a server not tracked by $pid_file. Inspect it before starting T3." >&2
+  exit 1
 fi
 
 cd "$repo_root"
@@ -62,6 +68,7 @@ for _ in {1..20}; do
     if IFS= read -r -t 1 response <&3 && [[ "$response" == HTTP/* ]]; then
       exec 3>&-
       exec 3<&-
+      is_t3_server "$server_pid" || exit 1
       echo "T3 is running on 127.0.0.1:3773."
       exit 0
     fi
@@ -72,4 +79,5 @@ for _ in {1..20}; do
   sleep 1
 done
 
-echo "T3 is running as process $server_pid, but no HTTP response was available during the startup wait."
+echo "T3 did not become ready. Inspect $log_file inside the Codespace." >&2
+exit 1
