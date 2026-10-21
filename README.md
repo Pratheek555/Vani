@@ -82,7 +82,9 @@ CI runs both commands on Node.js 24 after `pnpm install --frozen-lockfile`. It d
 
 ## Develop in the cloud
 
-Open the repository in [GitHub Codespaces](https://codespaces.new/Pratheek555/Vani). The devcontainer installs Node.js 24, pnpm 10.33.4, the Claude Code CLI, and the Codex CLI. It forwards the website and gateway ports as private ports. It does not automatically forward the core port.
+Open the repository in [GitHub Codespaces](https://codespaces.new/Pratheek555/Vani). The devcontainer installs Node.js 24, pnpm 10.33.4, the Claude Code CLI, the Codex CLI, and T3 0.1.1. It forwards the website and gateway ports as private ports. It does not forward the core or T3 ports.
+
+T3 starts on `127.0.0.1:3773` whenever the Codespace starts. Run `/data/bin/t3 connect --headless` once inside the Codespace to connect it to T3 Connect. After that, you can use T3 on your phone to select the cloud environment and control agents while your laptop is off. The Codespace must be running.
 
 The same setup script works in Codex Cloud and other Linux development environments:
 
@@ -90,7 +92,7 @@ The same setup script works in Codex Cloud and other Linux development environme
 bash scripts/cloud-setup.sh
 ```
 
-The script installs locked dependencies and creates missing local environment files. It does not sync Keiki, deploy a service, copy personal data, or publish a cloud environment. See [Cloud development](docs/cloud-development.md) for Codespaces URLs, Codex Cloud publishing, `/data` persistence, and CLI authentication.
+The script installs locked dependencies and creates missing local environment files. It does not sync Keiki, deploy a service, copy personal data, publish a cloud environment, or authenticate an agent CLI. See [Cloud development](docs/cloud-development.md) for Codespaces URLs, T3 Connect setup, `/data` persistence, Codex Cloud publishing, and CLI authentication.
 
 ## Keep secrets and family data out of Git
 

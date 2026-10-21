@@ -5,6 +5,11 @@
     "context": ".."
   },
   "remoteUser": "node",
+  "containerEnv": {
+    "T3CODE_HOME": "/data/t3",
+    "CODEX_HOME": "/data/providers/codex",
+    "CLAUDE_CONFIG_DIR": "/data/providers/claude"
+  },
   "features": {
     "ghcr.io/devcontainers/features/sshd:1": {}
   },
@@ -28,5 +33,6 @@
       "onAutoForward": "ignore"
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh"
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/t3-start.sh"
 }
