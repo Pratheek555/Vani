@@ -11,4 +11,5 @@ COPY packages/shared packages/shared
 COPY apps/core apps/core
 ENV NODE_ENV=production DATA_DIR=/data
 # Maritime injects PORT; the app binds 0.0.0.0:$PORT itself.
-CMD ["node", "--import", "tsx", "apps/core/src/index.ts"]
+WORKDIR /app/apps/core
+CMD ["node", "--import", "tsx", "src/index.ts"]

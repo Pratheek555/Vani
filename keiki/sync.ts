@@ -26,6 +26,8 @@ const config: CloudAgentConfig = {
     name: 'Vani',
     model: env.KEIKI_MODEL,
     system_prompt: readFileSync(new URL('./system-prompt.md', import.meta.url), 'utf8'),
+    // Stopping condition: a confused model gives up instead of looping on tools.
+    max_steps: 6,
   },
   tools: Object.entries({ ...gatewayTools, ...tools }).map(([name, tool]) => ({
     name,

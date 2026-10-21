@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+/* Palette sampled from the reference shot: airy periwinkle haze, one violet accent, near-black ink. */
+@theme {
+  --color-canvas: #fcfdff;
+  --color-ink: #17161d;
+  --color-ink-2: #4c4b58;
+  --color-ink-3: #85848f;
+  --color-line: #eceaf3;
+  --color-mist: #f4f2fb;
+  --color-haze: #e4ebff;
+  --color-lilac: #efeaff;
+  --color-brand: #6a47fe;
+  --color-brand-deep: #5232e8;
+  --color-brand-soft: #8e75fd;
+
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.35s ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--font-caveat), 'Segoe Print', cursive;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand;
+  }
+}
+
+@layer components {
+  /* Vani's mark: a soft violet-to-marigold orb. */
+  .orb {
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle at 34% 30%, #fff 0 9%, transparent 32%),
+      radial-gradient(circle at 70% 72%, #ffb547 0, transparent 46%),
+      radial-gradient(circle at 26% 74%, #5cc8ff 0, transparent 50%),
+      radial-gradient(circle at 60% 40%, #f25cf0 0, transparent 58%),
+      #7b5cff;
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.35),
+      0 4px 14px -4px rgb(106 71 254 / 0.55);
+  }
+
+  /* Big blurred cloud behind the hero, like the reference's sky haze. */
+  .haze {
+    background:
+      radial-gradient(40% 55% at 18% 55%, #dfe7ff 0, transparent 70%),
+      radial-gradient(38% 50% at 82% 50%, #e2dcff 0, transparent 70%),
+      radial-gradient(55% 45% at 50% 70%, #e9efff 0, transparent 75%);
+    filter: blur(8px);
+  }
+
+  /* Light rays on the highlighted violet cards. */
+  .rays {
+    background:
+      linear-gradient(115deg, transparent 38%, rgb(255 255 255 / 0.18) 46%, transparent 54%),
+      linear-gradient(125deg, transparent 52%, rgb(255 255 255 / 0.12) 58%, transparent 64%),
+      radial-gradient(70% 60% at 85% 0%, rgb(255 255 255 / 0.35), transparent 70%),
+      linear-gradient(180deg, #7e65fe 0%, #6a47fe 55%, #5a36f6 100%);
+  }
+
+  .card {
+    @apply rounded-[28px] border border-line bg-white shadow-[0_1px_2px_rgb(23_22_29/0.04),0_12px_32px_-18px_rgb(64_44_160/0.18)];
+  }
+
+  /* Soft gradient well that holds the little product mockups. */
+  .well {
+    @apply rounded-[22px] border border-white/70;
+    background:
+      radial-gradient(90% 80% at 100% 0%, #e7e1ff 0, transparent 60%),
+      radial-gradient(80% 90% at 0% 100%, #e3ebff 0, transparent 60%),
+      #f6f5fd;
+  }
+}
+
+/* Scroll-driven reveal where supported; content simply shows elsewhere. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-float,
+  .animate-fade-in {
+    animation: none;
+  }
+}

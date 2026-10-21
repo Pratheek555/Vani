@@ -13,6 +13,7 @@ const IdentityRequest = z.looseObject({
   sender: z.looseObject({
     channel: z.string(),
     userId: z.string().optional(),
+    conversationId: z.string().optional(),
     addressing: z.looseObject({ isDm: z.boolean() }).optional(),
   }),
   conversation: z.looseObject({ id: z.string() }),
@@ -25,6 +26,8 @@ const IdentityRequest = z.looseObject({
 // still carries the verified sender and the inbound text, all covered by the signature.
 // `channelId` / `isDirect` / `messageId` come from the SDK's ChannelEnvelope type and are
 // not yet seen on real traffic.
+// API-channel turns (seen Oct 21, 2026) name no person: the sender and `context.channel` only
+// carry the caller's `conversationId`, and the identity webhook gets no `messages`.
 const ToolCall = z.looseObject({
   input: z.unknown(),
   context: z.looseObject({
@@ -34,6 +37,7 @@ const ToolCall = z.looseObject({
       .looseObject({
         channel: z.string(),
         userId: z.string().nullish(),
+        conversationId: z.string().nullish(),
         inboundText: z.string().nullish(),
         messageId: z.string().nullish(),
         channelId: z.string().nullish(),
@@ -44,8 +48,17 @@ const ToolCall = z.looseObject({
 })
 type ToolContext = z.infer<typeof ToolCall>['context']
 
+/**
+ * `<channel>:<sender id>`. An API-channel conversation stands in for its sender: only holders
+ * of our Keiki key can open one, and the caller picks its id.
+ */
+function senderIdentity(channel: string, userId?: string | null, conversationId?: string | null): string | null {
+  const id = userId || (channel === 'api' ? conversationId : null)
+  return id ? `${channel}:${id}` : null
+}
+
 const chatIdentityOf = (ctx: ToolContext) =>
-  ctx.channel?.userId ? `${ctx.channel.channel}:${ctx.channel.userId}` : null
+  ctx.channel ? senderIdentity(ctx.channel.channel, ctx.channel.userId, ctx.channel.conversationId) : null
 
 /**
  * The room this turn happened in and whether it's private. On Telegram `phone` is per
@@ -89,9 +102,8 @@ keiki.post('/identity', async (c) => {
   const raw = await signedJson(c)
   if (raw === null) return c.json({ error: 'bad signature' }, 401)
   const { sender, conversation, messages } = IdentityRequest.parse(raw)
-  if (!sender.userId) return c.json(NOBODY)
-
-  const chatIdentity = `${sender.channel}:${sender.userId}`
+  const chatIdentity = senderIdentity(sender.channel, sender.userId, sender.conversationId)
+  if (!chatIdentity) return c.json(NOBODY)
   const isDm = sender.addressing?.isDm ?? false
 
   let member = await findMember(chatIdentity)

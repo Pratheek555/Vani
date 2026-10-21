@@ -30,7 +30,7 @@ v1 is **English only**, text plus photos (photos of lists, prescriptions, medici
 
 ### In scope
 1. **Zero-friction setup in family groups.** Add Vani to an existing WhatsApp or iMessage group and it onboards everyone in under 5 minutes.
-2. **Errand runner: groceries.** Blinkit / Zepto / Swiggy Instamart / BigBasket (pick 1–2 for MVP).
+2. **Errand runner: groceries.** **Swiggy Instamart** through Swiggy's official MCP server (decided Oct 21, 2026). Zepto is the candidate second vendor.
 3. **Errand runner: medicines.** Tata 1mg / PharmEasy / Apollo 24|7 (pick 1 for MVP).
 4. **Medicine manager.** Regular medications registry, run-out forecasting, proactive refills.
 5. **Health & medical support layer.** Lab report explanation, doctor-visit prep, red-flag escalation, medical record vault.
@@ -64,11 +64,11 @@ v1 is **English only**, text plus photos (photos of lists, prescriptions, medici
 ```
 Parent: "Need milk, atta 5kg, and the usual vegetables"
   → Vani resolves items against the family's "usual" list + preferences
-  → Builds cart on vendor (browser automation, parent's linked account)
+  → Builds the cart on Instamart through Swiggy's MCP (owner's linked Swiggy account, parents' saved address)
   → DMs parent a short summary: items, total, ETA. Asks to confirm or edit
   → Applies approval policy (§5):
-       prepare mode   → payment link / UPI collect sent to approver
-       autonomous mode → checkout via COD or prepaid vendor wallet, within limits
+       prepare mode   → Swiggy UPI payment link sent to the approver (default)
+       autonomous mode → cash on delivery or Swiggy Money, within limits
   → Tracks the order → tells parent the ETA → confirms delivery → logs it
   → Owner sees it in the digest (or a real-time alert if over threshold)
 ```
@@ -119,6 +119,8 @@ Options, cheapest first:
 
 Leaning toward **1 + 2 for the MVP**, with prepare mode (payment link to the approver) as the default fallback.
 
+For groceries, Instamart's checkout already offers both: `Cash` (option 1) and `SwiggyPay`, its Swiggy Money wallet (option 2).
+
 ## 6. Architecture
 
 ### 6.1 Split: Keiki front, Maritime brain
@@ -161,6 +163,7 @@ Leaning toward **1 + 2 for the MVP**, with prepare mode (payment link to the app
 - **Account linking:** the vendor login OTP goes to the parent's phone, so Vani DMs the parent: "Please forward the 6-digit code you just got." The session is kept in the Maritime VM (encrypted at rest) to keep re-logins rare.
 - Treat adapters as brittle. Use screenshot + DOM fallbacks, alert loudly on failure, and degrade to "here's a ready-made list and a deep link" if automation breaks.
 - Keiki's built-in browser automation is an alternative. Choose per vendor after the day-0 spike.
+- **Instamart (decided Oct 21, 2026):** the adapter is an MCP client for `mcp.swiggy.com/im`, not browser automation. The owner links their own Swiggy account once with OAuth (phone + OTP on Swiggy's page), so no OTP is relayed through chat. API details are in `CLAUDE.md`.
 
 ### 6.4 Stack
 - TypeScript (strict), Node LTS, pnpm
@@ -200,7 +203,7 @@ Leaning toward **1 + 2 for the MVP**, with prepare mode (payment link to the app
 
 ## 10. Demo story (for judges)
 1. The student adds Vani to the real family WhatsApp group. Vani onboards Mom and Dad in about 3 minutes.
-2. Mom sends a photo of a handwritten grocery list. Vani builds a Blinkit cart, Mom confirms, the student taps approve, and the order is placed and tracked.
+2. Mom sends a photo of a handwritten grocery list. Vani builds an Instamart cart, Mom confirms, the student approves and pays with a UPI link, and the order is placed and tracked.
 3. Vani notices Dad's BP medicine runs out in 4 days (from a strip photo on setup) and proactively offers a refill. Dad says yes and it's ordered.
 4. Mom sends a blood test report. She gets a plain-English summary, the student gets an FYI, and Vani adds a "discuss with doctor" checklist for her appointment next week.
 5. Dad mentions dizziness and chest pain. Vani gives emergency guidance right away and alerts the student and the cousin nearby.

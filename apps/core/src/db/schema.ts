@@ -17,6 +17,19 @@ export const members = sqliteTable('members', {
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 })
 
+/** The family's shared grocery list. `key` is the tidied name, so "Milk" and "milk." are one line. */
+export const groceryItems = sqliteTable('grocery_items', {
+  key: text('key').primaryKey(),
+  /** As the person wrote it. */
+  name: text('name').notNull(),
+  /** Free text as said ("5kg", "2 dozen"); null when none was given. */
+  quantity: text('quantity'),
+  /** Member id; the name is looked up when the list is shown. */
+  addedBy: text('added_by').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+})
+
 /** Answers to tool calls that carried an idempotency key, replayed on redelivery. Pruned after a week. */
 export const toolCalls = sqliteTable('tool_calls', {
   key: text('key').primaryKey(),

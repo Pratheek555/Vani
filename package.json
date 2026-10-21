@@ -7,7 +7,8 @@
   "scripts": {
     "dev:gateway": "tsx watch apps/gateway/src/index.ts",
     "dev:core": "tsx watch apps/core/src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "dev:web": "pnpm --filter @vani/web dev",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/web",
     "db:generate": "drizzle-kit generate --config apps/gateway/drizzle.config.ts && drizzle-kit generate --config apps/core/drizzle.config.ts",
     "keiki:print": "tsx keiki/sync.ts --print",
     "keiki:sync": "tsx keiki/sync.ts",

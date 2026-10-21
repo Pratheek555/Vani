@@ -52,6 +52,7 @@ const $ = (id) => document.getElementById(id)
 $('toggle').onclick = () => {
   mode = mode === 'login' ? 'signup' : 'login'
   const s = mode === 'signup'
+  document.title = s ? 'Vani: create an account' : 'Vani: log in'
   $('go').textContent = s ? 'Create account' : 'Log in'
   $('sub').textContent = s ? 'Create an account to set up Vani for your family.' : 'Log in to manage your family.'
   $('q').textContent = s ? 'Already have an account?' : 'New here?'
@@ -59,12 +60,13 @@ $('toggle').onclick = () => {
   $('password').autocomplete = s ? 'new-password' : 'current-password'
   $('err').textContent = ''
 }
+if (location.pathname === '/signup') $('toggle').click()
 $('f').onsubmit = async (e) => {
   e.preventDefault()
   $('go').disabled = true
   const r = await post('/api/auth/' + mode, { email: $('email').value, password: $('password').value })
   $('go').disabled = false
-  if (r.ok) location.href = '/'
+  if (r.ok) location.href = '/app'
   else $('err').textContent = r.body.error || 'Something went wrong. Try again.'
 }
 </script>`,

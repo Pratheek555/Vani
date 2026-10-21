@@ -11,11 +11,14 @@ await migrateDb()
 
 const app = new Hono()
 app.get('/health', (c) => c.json({ ok: true }))
-app.get('/login', async (c) => ((await currentAccount(c)) ? c.redirect('/') : c.html(loginPage)))
-app.get('/', async (c) => {
+// The landing page lives in apps/web, which proxies /login, /signup, /app and /api here.
+for (const path of ['/login', '/signup'])
+  app.get(path, async (c) => ((await currentAccount(c)) ? c.redirect('/app') : c.html(loginPage)))
+app.get('/app', async (c) => {
   const account = await currentAccount(c)
   return account ? c.html(setupPage(account.email)) : c.redirect('/login')
 })
+app.get('/', (c) => c.redirect('/app'))
 app.route('/api/auth', auth)
 app.route('/api', signup)
 app.route('/keiki', keiki)

@@ -1,3 +1,16 @@
 node_modules
 .data
 .env
+.env.local
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+.audit/
+.next
+next-env.d.ts
+*.tsbuildinfo

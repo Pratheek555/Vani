@@ -2,3 +2,14 @@ node_modules
 **/node_modules
 .data
 .env
+**/.env
+**/.env.*
+.git
+.audit
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
+**/*.log
+**/.next

@@ -7,7 +7,9 @@ Vani is a family errand runner and care assistant. It lives in a family's WhatsA
 - **v1 focus:** errands (groceries, medicines), medicine manager (refill forecasting), and a health support layer (report explainer, doctor-visit prep, red-flag escalation, medical vault). **Fitness devices are deferred.**
 - **Group behavior:** Vani listens in the group and chimes in when clearly useful. Detailed or private work moves to DMs.
 - **Execution:** both *prepare mode* (agent builds the cart, a human pays) and *autonomous mode* (COD or prepaid wallet within caps). The **approval policy is configurable per family.**
+- **Groceries (decided Oct 21, 2026):** **Swiggy Instamart** through Swiggy's official MCP server, with no browser automation. Orders go through the **owner's** Swiggy account to the parents' saved address. The default payment is a **UPI payment link sent to the approver** (prepare mode). Cash on delivery and Swiggy Money are per-family options.
 - **Architecture:** **Keiki** = front (channels, persona, conversation memory, approvals). **Maritime** = brain (Vani Core: state, task engine, scheduler, vendor browser automation, document vault), exposed to Keiki as HTTP tools.
+- **Website:** React with Next.js App Router in `apps/web`. The landing page is built first. The customer onboarding and dashboard will also use Next.js.
 - **Stack:** TypeScript (strict), Node LTS, pnpm, Hono, SQLite + Drizzle, Playwright, zod.
 - **Builder:** solo. Week-1 MVP deadline is Sat Oct 25, 2026.
 
@@ -15,7 +17,10 @@ Vani is a family errand runner and care assistant. It lives in a family's WhatsA
 ```
 vani/
   packages/shared/  # zod contracts: CoreRequest/CoreResponse, Caller, FamilyProfile, tool schemas (tools.ts)
-  apps/gateway/     # ONE public service: website signup, Telegram deep links, Keiki identity
+  apps/web/         # Next.js + React website: landing page at /; onboarding and dashboard next
+    src/content/landing.ts  # landing-page copy, navigation, and CTA links
+    src/components/landing/ # page sections and interactive setup preview
+  apps/gateway/     # signup, sessions, Telegram deep links, Keiki identity
                     #   webhook, Keiki tool webhooks → routes each call to that family's core
     src/runtime/    # where cores run: local (one process, SQLite file per family) | maritime (one VM per family)
   apps/core/        # Vani Core, ONE PER FAMILY on Maritime: /health /chat /schedules, SQLite in /data
@@ -42,12 +47,21 @@ Isolation: never trust ids in tool input. Each conversation is pinned to one fam
 
 ## Commands
 - `pnpm install`, then copy `.env.example` to `.env`
-- `pnpm dev:core` and `pnpm dev:gateway` (ports 8788 / 8787). The signup page is at http://localhost:8787
+- `pnpm dev:core`, `pnpm dev:gateway`, and `pnpm dev:web` in separate terminals (ports 8788, 8787, and 3000).
+- Open http://localhost:3000 for the landing page. Next.js proxies `/login`, `/signup`, `/app`, and `/api/*` to the gateway. `/app` requires a session.
 - `pnpm typecheck`
+- `pnpm --filter @vani/web build` and `pnpm --filter @vani/web start` for the production website.
 - `pnpm db:generate` after any change to a `db/schema.ts` (migrations run automatically at boot)
 - `pnpm sim identity <tgUserId> "/start <token>" [--group <id>]` and `pnpm sim tool <memberId> <tool> [json] [--conv <groupId>] [--msg <messageId>]` (default is a DM turn; reuse `--msg` to test replay). In Git Bash, a leading `/start` gets mangled into a path, so run `MSYS_NO_PATHCONV=1 node node_modules/tsx/dist/cli.mjs scripts/keiki-sim.ts ...` instead.
 - `pnpm keiki:print` / `pnpm keiki:sync` push the agent config to Keiki
 - Docker: `docker build -f apps/<gateway|core>/Dockerfile .` from the repo root
+
+## Website status
+- The landing page follows the linked Dribbble reference, with lavender gradients, chat examples, feature cards, setup tabs, approval modes, safety details, and an FAQ.
+- `apps/web/src/content/landing.ts` owns the page copy. It describes the product scope in `PLAN.md`, not a claim that every planned core tool is implemented. Telegram is the only tested channel. Do not advertise WhatsApp, iMessage, voice, pricing, or customer numbers as available.
+- Sign-up, login, and family setup still use gateway HTML through the Next.js rewrites. The React onboarding and dashboard are the next phase.
+- Next.js reads environment files from `apps/web`, independently of the gateway's root `.env`. Set `GATEWAY_URL` and `SITE_URL` in `apps/web/.env.local` when overriding the local defaults. `GATEWAY_URL` is the gateway origin. `SITE_URL` is the public website origin used in share metadata.
+- The gateway and core Dockerfiles do not serve the website. Deploy `apps/web` separately and set its environment variables before building.
 
 ## Unverified platform assumptions
 Keiki and Maritime are new (Sept 2026). Before relying on any of these, check their docs: WhatsApp/iMessage **group** support, custom HTTP tools, proactive outbound messaging API, media passed to tools, Maritime SDK/deploy flow. Record what you confirm here.
@@ -61,7 +75,8 @@ Legend: ✅ tested by us · 📄 the docs say so, not yet tested · ❓ unclear
 - 📄 Groups also work on **WhatsApp and iMessage**. The whole group shares one conversation, with shared history and memory.
 - 📄 **Custom tools:** you can upload *webhook tools* through the REST API. Keiki POSTs `{ input, context }` to our endpoint and expects JSON back. Remote MCP servers and OpenAPI specs can also be added as tool sources.
 - 📄 **Media:** Keiki can describe images and extract documents before the agent sees them. Raw attachments carry `attachment_id`, `media_id`, `mime`, `size` and a URL that **expires in 15 minutes**, so download it right away.
-- ❓ **Proactive outbound:** `POST /api/v1/developer/agents/{agentId}/notice` sends a "notice" for the agent to consider in its conversations. It's unclear whether the agent will reliably send a message that we choose, to a conversation that we choose. **Test this.**
+- 📄 **Proactive outbound** (openapi.json, read Oct 21): `POST /api/v1/developer/agents/{agentId}/notice` with `{ text, phone? }` and a key with `agents:write`. `phone` targets one conversation (the key tools see as `context.phone`, e.g. `tg:<userId>`). Leave it out to broadcast to up to 200 recent conversations. The reply reports `ran | queued | unavailable` per conversation. It returns 404 when that phone has never talked to the agent. The agent rewrites the notice in its own words and "decides whether" to send it, so a nudge lands in that chat's history. ❓ **Test** whether it reliably relays our notice, and which `phone` a Telegram group uses.
+- 📄 **SDK 0.1.4 types:** cloud tools accept `policy: { approval: 'ask' | 'allow', requiredScopes }`. `approval: 'ask'` presumably makes Keiki confirm with the speaker before running the tool, which suits a "place order" step. `defineAlert` (cron/webhook alerts) exists only for self-hosted kit agents, not cloud agents. `ToolAppPresentation` cards appear only on Keiki's own purchased lines, not Telegram.
 - 📄 **Identity webhook** (docs/identity, /conversation-auth): set `identity: { webhook_url, secret }`. Before every turn, Keiki POSTs the sender (`channel`, `userId`, ..., plus an optional `messages` array that includes text "for linking challenges") to our endpoint. We reply `{ userId, role, scopes, ttlSeconds, reply? }`. For an unknown sender we return `userId: null` with a `reply`: that ends the turn before the model sees any history. Calls are signed with `X-Keiki-Signature`, an HMAC-SHA256 of `<timestamp>.<body>`; reject anything older than 5 min, and use `verifyWebhook` from `@onkeiki/agents/cloud`. Webhook tool calls carry signed agent/conversation/channel/principal context (`context.userId`). The docs only show sender shapes for Slack, iMessage and API. ❓ **Telegram sender shape, and whether `/start <payload>` text reaches the identity webhook.**
 - 📄 **Partner deployments** (docs/partner-deployments): `POST /api/v1/developer/deployments` with a unique `external_ref` creates or updates one agent per customer, with its own tools/channels. A Telegram channel needs a `bot_token` **per deployment**, so it doesn't fit one shared bot link. Per-user MCP credentials go through `PUT .../mcp-senders`.
 - 📄 Keiki also has a managed cloud browser with screenshots and handoff to a person. It's an alternative to running Playwright ourselves.
@@ -87,7 +102,72 @@ Legend: ✅ tested by us · 📄 the docs say so, not yet tested · ❓ unclear
 - ✅ The model `google/gemini-3.8-flash` is accepted.
 - ❓ The SDK's `ChannelEnvelope` type lists `channelId` (the room, e.g. a Telegram group), `isDirect` and `messageId`. We now pin groups by `channelId` and set `Caller.conversationKind` from `isDirect` (or from `channelId === userId` on Telegram). If neither field shows up, the kind is `unknown` and is treated like a group. **Check this with `LOG_KEIKI_PAYLOADS=1` in a real Telegram group and DM.**
 
+### Findings (Oct 21, 2026): API channel + real-model grocery test
+- ✅ **API channel:** `POST https://onkeiki.com/api/v1/openai/chat/completions` with `{ model: <agentId>, messages, stream: false }` and an `x-conversation-id` header.
+  - The sender has **no `userId`**, only that `conversationId`. The body's `user` field isn't passed through.
+  - The identity webhook gets no `messages`, and its `conversation.id` is `api:<agentId>:<conversationId>`.
+  - So the gateway treats `api:<conversationId>` as the sender, and linking on this channel goes through `link_account`.
+- ✅ Keiki calls the identity webhook about 3 times per turn while we answer with `ttlSeconds: 0`.
+- ✅ `keiki:sync` accepts `agent.max_steps`.
+- ✅ **Grocery list, real model** (gemini-3.8-flash, API channel): 21 of 21 test turns picked the expected tool with the right input.
+  - Correct non-calls: "done" got a question, a medicine was refused, "order it" got "not yet", and small talk got no tool.
+  - One message can trigger two calls, for example a remove plus an add.
+  - Turns took 4–12s through a cloudflared quick tunnel.
+- ❓ The API channel can't cover Telegram group behavior (@mentions), photos, or Telegram DM/group detection. Replies use Markdown (bold, bullets), so check how Telegram shows them.
+- ✅ **Telegram DM, real traffic:**
+  - Tool calls carry `context.channel{channel:"telegram", userId, inboundText, messageId}` and `context.phone: "tg:<userId>"`. They have no `channelId`, `isDirect` or `principal`, and the identity webhook is never called.
+  - So the gateway can't tell a DM from a group. `conversationKind` comes out `unknown`, which means `dmOnly` tools would be refused even in DMs.
+  - `messageId` is present (e.g. "17"), so dedupe of redelivered messages works.
+- ✅ Grocery list in a real Telegram DM: 8 of 8 turns were correct, at about 11–13s each.
+- ❓ **Telegram groups are still untested:** the payload shape, @mention gating, and whether a group and a DM share history or memory.
+  - Keiki's docs (cloud-agents, "Telegram group chats") say a group is one shared conversation by default (`identity: "chat"`).
+  - `identity: "user"` gives each member their own conversation. `replyMode: "always"` answers every group message, and `mentionAliases` defaults to the bot's display name.
+  - These are set per identity, in the dashboard. Keiki's per-user memory is a separate feature.
+- Testing note: Telegram Web keeps more than one chat in the page. Before sending, scope the message box to `.chat.active` and check its title, or the message can land in a different chat.
+
+### Maritime deploy (Oct 20, 2026)
+- ✅ CLI: `npm install -g maritime-cli` (2.0.1). Run it from PowerShell, because the postinstall's `tar` fails on `C:\` paths in Git Bash. Auth is the `MARITIME_TOKEN` env var (an `mk_` key). `maritime doctor --agent` checks it.
+- 📄 Three ways to get code onto an agent: a **public** prebuilt image (`imageName`; Docker Hub/GHCR only, no private registries), a GitHub repo, or a local dir/zip (`maritime agents create --from-dir`). Repo and zip builds take 1–3 min and need the `Dockerfile` **at the root**, so our `apps/*/Dockerfile` would have to be staged at the root.
+- 📄 Custom containers use `framework`/`template` `"custom"`. `/chat` receives `{ message, source }` and reads the reply from `response` (then `reply`/`message`/`text`/`output`), which matches our core.
+- 📄 Public apps (`--public --port`) sleep when idle and wake in about 1s on a request, and `/data` persists. Custom domains aren't documented.
+- Plan: build the core image **once** and push it as a public GHCR image, so each new family VM just pulls it with no per-family build. Run the gateway as a public Maritime agent to get a stable URL in place of the trycloudflare tunnel.
+
+### Maritime Computers, including Android (docs and changelog read Oct 21, 2026)
+- 📄 A **Computer** is a persistent machine per end user that *our* model drives over MCP at `https://mcp.maritime.sh/mcp`. Pin it to one user with `/mcp/u/<externalUserId>`, so a prompt injection can't reach another family's machine.
+- 📄 Its tools are `get_computer`, `computer` (screenshot, click, type, scroll, key), `computer_batch`, `run_shell`, `read_file` / `write_file`, `request_takeover` and `takeover_status`. `request_takeover` returns a link where a person finishes a login, OTP or payment and then hands control back.
+- 📄 The REST equivalent is `/api/v1/computers`, called with an API key that has the `computers` scope.
+- 📄 **Android** has been available since Sep 25, 2026 (`os: "android"`). For apps that ship only ARM code, `arch: "arm64"` has been available since Oct 9. The agent installs apps, taps through them and follows links, and a person can watch live.
+- ❓ The docs page only describes the Linux desktop. Unknown: how apps get installed (Play Store region or APK), and whether Indian apps run (emulator checks).
+- 📄 **Persistence:** logins and files last until the computer is deleted. It sleeps after 5 idle minutes. Waking takes about a second, but creating one can take up to 60s.
+- 📄 **Plan:** a computer takes one machine slot (~$1/month) but **needs a paid plan**: Starter is $20/month for 20 machines, with 5 awake at once. Plan status reports `androidAvailable`.
+- 📄 **Limits:** 30 creates, 300 actions and 30 viewer links per minute per key.
+
 ### How tool calls stay safe (Oct 20, 2026)
 - **DM-only tools:** set `dmOnly: true` in `packages/shared/src/tools.ts` on any tool that returns health or money details. The core refuses it unless `caller.conversationKind === 'dm'`.
 - **Idempotency:** the gateway hashes conversation + Keiki `messageId` + tool + input into `idempotencyKey`. The core stores the answer in `tool_calls` for 7 days and replays it on redelivery. Calls that throw aren't stored. With no `messageId`, there's no dedupe.
 - **Profile drift:** every tool request carries the gateway's `FamilyProfile`. The core resyncs (and deletes removed members) whenever its copy differs.
+
+### Swiggy Instamart MCP (docs read Oct 21, 2026)
+Docs: mcp.swiggy.com/builders. `/builders/llms.txt` lists every page; add `.md` to a page URL for clean markdown.
+- 📄 The server is `https://mcp.swiggy.com/im` (MCP over HTTP). Every tool returns `{ success, data, message? }`, or `{ success: false, error: { message } }`.
+- 📄 **Auth:** OAuth 2.1 + PKCE with Dynamic Client Registration (`POST /auth/register`). The user logs in with phone + OTP on Swiggy's page. The access token lasts 5 days. Each refresh returns a new refresh token valid for 30 days. On a 401, refresh first, then re-authorize. Redirect URIs must be HTTPS and on Swiggy's allowlist, except `http://localhost`. Claude Desktop (`mcp-remote`) uses the localhost path against production, so our own family can connect without approval.
+- 📄 **Production for other users is invite-only.** Apply at `/builders/access` with redirect URIs, use case and a demo video. Staging comes first (`mcp-staging.swiggy.com`, seeded data, no real orders). Production follows once staging has been green for 48 hours.
+- 📄 **Grocery flow:**
+  1. `get_addresses`.
+  2. `your_go_to_items` (frequently ordered items at that address) or `search_products` (returns variants; pass `spinId` + `skuId`).
+  3. `update_cart`. It **replaces the whole cart**. The cart lives on Swiggy's side, per account, tied to one address, and expires.
+  4. `get_cart` (bill breakdown), then `get_payment_options`.
+  5. `checkout`, then `track_order` (poll no more than once every 10s).
+
+  The minimum order is ₹99. Errors are matched on message text: out of stock, address not serviceable, minimum not met, cart expired.
+- 📄 **Payment** (`checkout.paymentMethod`):
+  - `Cash` places the order at once.
+  - `SwiggyPay` (Swiggy Money) takes the money from the wallet during checkout.
+  - `UPI` + `generateUPIQR: true` creates the order as `PENDING_PAYMENT` and returns `bridgeUrl`, an HTTPS scan-or-tap payment page to send to the payer. Then poll `check_payment_status` (about 19s per call; honor `pollingIntervalInMs` and `maxTimeToPollForInMs`). Call `confirm_order({ orderId, paasId })` if Swiggy didn't confirm it automatically.
+
+  Never ask anyone for a UPI ID.
+- 📄 **`checkout` is not idempotent.** After an error or timeout, check `get_orders` before any retry. Never set `confirmDuplicate` on our own.
+- 📄 **Swiggy's rules for agents:** before `checkout`, show the items, total, payment method and full delivery address, and get an explicit yes. Show Swiggy's success message as-is ("Instamart order placed successfully"). Orders can't be cancelled through MCP, so tell the user to call Swiggy customer care at 080-67466729.
+- 📄 **Data:** Swiggy is the data fiduciary and we are a processor. Keep Swiggy data only as long as the task needs it, never use it for analytics or training, and hash identifiers at rest. Processing responses outside India (our LLM and VMs) needs a signed DPA with Swiggy before production.
+- 📄 **Limits:** gateway caps return a 429 with `Retry-After`. Keep one MCP session per user, not one per call.
+- 📄 Swiggy accepts phone numbers from 27 countries and international cards (press release, Oct 2024). ❓ Whether the MCP login page accepts a foreign number.
