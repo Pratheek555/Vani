@@ -29,6 +29,8 @@ Private forwarded URLs require GitHub authentication. Keiki cannot deliver webho
 
 Codespaces stop after the idle timeout set by your account or organization. A Codespace is a development machine, not hosting. Deploy the website, gateway, and cores to their intended hosting services for continuous availability.
 
+Codespaces has a monthly allowance, separate from Claude and Codex subscriptions. On a 2-core machine, GitHub Free includes 60 running hours and GitHub Pro includes 90. Paid overage is $0.18 per running hour. Storage has its own allowance and can accrue usage while the machine is stopped. Check your remaining usage and spending budget in [GitHub billing](https://github.com/settings/billing), and review the [current Codespaces prices](https://docs.github.com/en/billing/concepts/product-billing/github-codespaces). Stop the Codespace when you finish using it.
+
 ## Use the persistent data directory
 
 The devcontainer mounts the `vani-data` Docker volume at `/data`. The Codespaces setup writes `DATA_DIR=/data`, so gateway and local core SQLite files survive container rebuilds. Deleting the Codespace or its volume deletes that development data.
