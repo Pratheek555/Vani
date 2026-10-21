@@ -25,6 +25,8 @@ The setup script derives public Codespaces origins from `CODESPACE_NAME` and `GI
 
 The devcontainer forwards port 3000 for the website and port 8787 for the gateway. Both ports are private by default. Port 8788 belongs to the core, is ignored by automatic port forwarding, and must not be made public.
 
+Private forwarded URLs require GitHub authentication. Keiki cannot deliver webhooks to the gateway under this baseline. To test external channels, deliberately expose only the gateway through a temporary public tunnel or change port 8787 visibility for the test, then restore private visibility. Keep webhook signature verification enabled and use synthetic data.
+
 Codespaces stop after the idle timeout set by your account or organization. A Codespace is a development machine, not hosting. Deploy the website, gateway, and cores to their intended hosting services for continuous availability.
 
 ## Use the persistent data directory
@@ -70,7 +72,7 @@ The baseline setup does not need Keiki, Maritime, Telegram, or production creden
 `scripts/cloud-setup.sh` performs the same steps in Codespaces and Codex Cloud:
 
 - Activates pnpm 10.33.4 through Corepack.
-- Runs `pnpm install --frozen-lockfile`.
+- Runs the frozen install through `corepack pnpm@10.33.4`, without writing system-wide package-manager shims.
 - Copies `.env.example` to `.env` only when `.env` is missing.
 - Replaces a missing or example `KEIKI_WEBHOOK_SECRET` with a random 32-byte value.
 - Sets `LOG_KEIKI_PAYLOADS=0`.
@@ -81,7 +83,7 @@ You can run the script again. It preserves a real webhook secret and converges o
 
 ## Authenticate the optional agent CLIs
 
-The devcontainer installs `@anthropic-ai/claude-code` and `@openai/codex` globally. Authenticate each CLI manually with its normal login command. Do not copy a local credential directory into the container or commit its files.
+The devcontainer installs `@anthropic-ai/claude-code@2.1.306` and `@openai/codex@0.163.0` globally. Update these versions deliberately in `.devcontainer/Dockerfile`. Authenticate each CLI manually with its normal login command. Do not copy a local credential directory into the container or commit its files.
 
 CLI access depends on your Anthropic and OpenAI account, organization policy, subscription, and usage limits. Installing a CLI does not grant a subscription or increase those limits.
 

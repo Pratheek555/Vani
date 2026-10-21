@@ -5,6 +5,9 @@
     "context": ".."
   },
   "remoteUser": "node",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
   "mounts": [
     "source=vani-data,target=/data,type=volume"
   ],

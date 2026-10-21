@@ -82,7 +82,7 @@ CI runs both commands on Node.js 24 after `pnpm install --frozen-lockfile`. It d
 
 ## Develop in the cloud
 
-Open the repository in [GitHub Codespaces](https://codespaces.new/Pratheek555/Vani). The devcontainer installs Node.js 24, pnpm 10.33.4, the Claude Code CLI, and the Codex CLI. It forwards only the website and gateway ports as private ports. It never forwards the core port.
+Open the repository in [GitHub Codespaces](https://codespaces.new/Pratheek555/Vani). The devcontainer installs Node.js 24, pnpm 10.33.4, the Claude Code CLI, and the Codex CLI. It forwards the website and gateway ports as private ports. It does not automatically forward the core port.
 
 The same setup script works in Codex Cloud and other Linux development environments:
 

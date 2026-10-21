@@ -34,9 +34,8 @@ if [[ ! -f "$root_example" ]]; then
   exit 1
 fi
 
-corepack enable
 corepack prepare pnpm@10.33.4 --activate
-pnpm --dir "$repo_root" install --frozen-lockfile
+corepack pnpm@10.33.4 --dir "$repo_root" install --frozen-lockfile
 
 if [[ ! -f "$root_env" ]]; then
   cp "$root_example" "$root_env"
