@@ -84,7 +84,7 @@ CI runs both commands on Node.js 24 after `pnpm install --frozen-lockfile`. It d
 
 Open the repository in [GitHub Codespaces](https://codespaces.new/Pratheek555/Vani). The devcontainer installs Node.js 24, pnpm 10.33.4, the Claude Code CLI, the Codex CLI, and T3 0.1.1. It forwards the website and gateway ports as private ports. It does not forward the core or T3 ports.
 
-T3 starts on `127.0.0.1:3773` whenever the Codespace starts. Run `/data/bin/t3 connect --headless` once inside the Codespace to connect it to T3 Connect. After that, you can use T3 on your phone to select the cloud environment and control agents while your laptop is off. The Codespace must be running.
+T3 starts on `127.0.0.1:3773` whenever the Codespace starts. Run `/data/bin/t3 connect link --headless` once inside the Codespace to connect it to T3 Connect. After that, select **Vani cloud** in T3 on your phone and control Claude while your laptop is off. Codex remains installed but unauthenticated. The Codespace must be running.
 
 The same setup script works in Codex Cloud and other Linux development environments:
 

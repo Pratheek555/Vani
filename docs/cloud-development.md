@@ -43,7 +43,7 @@ Codespaces has a monthly allowance, separate from Claude and Codex subscriptions
 
 The devcontainer mounts the `vani-data` Docker volume at `/data`. The Codespaces setup writes `DATA_DIR=/data`, so gateway and local core SQLite files survive container rebuilds. T3 state lives in `/data/t3`. Codex credentials live in `/data/providers/codex`, and Claude credentials live in `/data/providers/claude`. These directories have mode `700`.
 
-Container rebuilds preserve the `/data` volume, T3 connection state, CLI credentials, and Vani SQLite files. Deleting the Codespace or its volume deletes all of that state. The repository does not contain or print those credentials.
+Normal container rebuilds preserve the `/data` volume, T3 connection state, CLI credentials, and Vani SQLite files. A full rebuild can remove custom Docker volumes, so do not use it as a routine restart. Deleting the Codespace or its volume deletes all of that state. The repository does not contain or print those credentials.
 
 The gateway and core have separate Dockerfiles under `apps/`. Build either image from the repository root:
 

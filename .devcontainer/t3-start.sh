@@ -63,7 +63,7 @@ for _ in {1..20}; do
     exit 1
   fi
 
-  if exec 3<>/dev/tcp/127.0.0.1/3773 2>/dev/null; then
+  if { exec 3<>/dev/tcp/127.0.0.1/3773; } 2>/dev/null; then
     printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3
     if IFS= read -r -t 1 response <&3 && [[ "$response" == HTTP/* ]]; then
       exec 3>&-
